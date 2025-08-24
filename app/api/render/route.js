@@ -1,81 +1,57 @@
-import satori from "satori";
+// app/api/render-poster/route.js
+import { NextResponse } from "next/server";
 import { Resvg } from "@resvg/resvg-js";
-import MarkdownIt from "markdown-it";
+import satori from "satori";
 import React from "react";
 
-const md = new MarkdownIt({
-  html: true,
-  linkify: true,
-  typographer: true,
-});
-
-// 预加载字体
-let fontData;
-(async () => {
-  fontData = await fetch(
-    "https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMa5w.woff"
-  ).then((res) => res.arrayBuffer());
-})();
-
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Only POST supported" });
-  }
-
+export async function POST(req) {
   try {
-    const {
-      markdown = "# Hello Markdown\n\nThis is **SSR Rendering**",
-      theme = "light",
-      width = 600,
-      height = 800,
-      background = "#ffffff",
-      pagination = false,
-    } = req.body;
+    const { markdown, theme, width, height, background } = await req.json();
 
-    // 1. Markdown -> HTML
-    const html = md.render(markdown);
+    // 这里 markdown 建议先转为 HTML（例如用 marked/markdown-it）
+    // 这里简单展示一下：
+    const html = markdown.replace(/\n/g, "<br/>");
 
-    // 2. React 节点
-    const element = (
+    // 用 satori 渲染 SVG
+    const svg = await satori(
       <div
         style={{
           width,
           height,
-          background: background,
+          background: background || "#fff",
           color: theme === "dark" ? "#fff" : "#000",
-          fontFamily: "Inter",
-          padding: "20px",
           display: "flex",
-          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 24,
+          padding: "20px",
         }}
       >
         <div dangerouslySetInnerHTML={{ __html: html }} />
-      </div>
+      </div>,
+      {
+        width,
+        height,
+        fonts: [], // 可以在这里加载自定义字体
+      }
     );
 
-    // 3. Satori -> SVG
-    const svg = await satori(element, {
-      width,
-      height,
-      fonts: [
-        {
-          name: "Inter",
-          data: fontData,
-          weight: 400,
-          style: "normal",
-        },
-      ],
-    });
-
-    // 4. Resvg -> PNG
-    const resvg = new Resvg(svg, { fitTo: { mode: "width", value: width } });
+    // 把 SVG 转 PNG
+    const resvg = new Resvg(svg);
     const pngData = resvg.render();
     const pngBuffer = pngData.asPng();
 
-    // 5. 返回图片 (Base64 或直接响应)
-    res.setHeader("Content-Type", "image/png");
-    res.send(Buffer.from(pngBuffer));
+    return new NextResponse(pngBuffer, {
+      status: 200,
+      headers: {
+        "Content-Type": "image/png",
+      },
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Render Error:", err);
+    return NextResponse.json(
+      { error: "Render failed", details: err.message },
+      { status: 500 }
+    );
   }
 }
