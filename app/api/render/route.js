@@ -1,71 +1,32 @@
-import { NextResponse } from "next/server";
+import { Resvg } from "@resvg/resvg-wasm";
 import satori from "satori";
-import { Resvg } from "@resvg/resvg-js";
 import MarkdownIt from "markdown-it";
 
-// 初始化 markdown-it
-const md = new MarkdownIt();
-
 export async function POST(req) {
-  try {
-    const { markdown, theme = "light", width = 600, height = 400, background = "#fff" } = await req.json();
+  const { markdown, theme, width = 600, height = 400, background = "#fff" } = await req.json();
 
-    // Markdown → HTML
-    const html = md.render(markdown || "# Hello World");
+  // markdown → HTML → React-like nodes
+  const md = new MarkdownIt();
+  const html = md.render(markdown);
 
-    // SVG（使用 satori 渲染）
-    const svg = await satori(
-      {
-        type: "div",
-        props: {
-          style: {
-            width: `${width}px`,
-            height: `${height}px`,
-            background,
-            color: theme === "dark" ? "#fff" : "#000",
-            fontSize: "20px",
-            padding: "20px",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            textAlign: "left",
-          },
-          dangerouslySetInnerHTML: { __html: html },
-        },
+  // 用 Satori 渲染 SVG
+  const svg = await satori(
+    {
+      type: "div",
+      props: {
+        style: { width, height, background, color: theme === "dark" ? "#fff" : "#000" },
+        children: [{ type: "div", props: { dangerouslySetInnerHTML: { __html: html } } }],
       },
-      {
-        width,
-        height,
-        fonts: [
-          {
-            name: "Noto Sans",
-            data: await fetch(
-              "https://cdnjs.cloudflare.com/ajax/libs/noto-sans/21.0.0/NotoSans-Regular.ttf"
-            ).then((res) => res.arrayBuffer()),
-            weight: 400,
-            style: "normal",
-          },
-        ],
-      }
-    );
+    },
+    { width, height, fonts: [] }
+  );
 
-    // SVG → PNG（使用 resvg 渲染）
-    const resvg = new Resvg(svg, {
-      background: "transparent",
-      fitTo: { mode: "width", value: width },
-    });
+  // 用 Resvg (wasm) 转成 PNG
+  const resvg = new Resvg(svg);
+  const pngData = resvg.render();
+  const pngBuffer = pngData.asPng();
 
-    const pngData = resvg.render();
-    const pngBuffer = pngData.asPng();
-
-    return new NextResponse(pngBuffer, {
-      headers: {
-        "Content-Type": "image/png",
-        "Content-Disposition": "inline; filename=poster.png",
-      },
-    });
-  } catch (err) {
-    console.error("Error rendering poster:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
-  }
+  return new Response(pngBuffer, {
+    headers: { "Content-Type": "image/png" },
+  });
 }
