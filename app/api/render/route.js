@@ -1,32 +1,62 @@
-import { Resvg } from "@resvg/resvg-wasm";
-import satori from "satori";
-import MarkdownIt from "markdown-it";
+import { NextRequest, NextResponse } from "next/server";
+import { renderMarkdownToPNG } from "@/lib/renderToPng";
 
-export async function POST(req) {
-  const { markdown, theme, width = 600, height = 400, background = "#fff" } = await req.json();
+export const runtime = "nodejs"; // 重要：不能是 edge
+export const dynamic = "force-dynamic";
 
-  // markdown → HTML → React-like nodes
-  const md = new MarkdownIt();
-  const html = md.render(markdown);
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const {
+      markdown = "# Hello\n\n`markdown` -> **PNG**!",
+      width = 800,
+      background = "#0b1020",
+      textColor = "#e5e7eb",
+      fontFamily,
+      fontSize = 16,
+      padding = 32,
+      lineHeight = 1.8
+    } = body || {};
 
-  // 用 Satori 渲染 SVG
-  const svg = await satori(
-    {
-      type: "div",
-      props: {
-        style: { width, height, background, color: theme === "dark" ? "#fff" : "#000" },
-        children: [{ type: "div", props: { dangerouslySetInnerHTML: { __html: html } } }],
-      },
-    },
-    { width, height, fonts: [] }
-  );
+    const { buffer, contentType } = await renderMarkdownToPNG({
+      markdown,
+      width,
+      background,
+      textColor,
+      fontFamily,
+      fontSize,
+      padding,
+      lineHeight
+    });
 
-  // 用 Resvg (wasm) 转成 PNG
-  const resvg = new Resvg(svg);
-  const pngData = resvg.render();
-  const pngBuffer = pngData.asPng();
+    return new NextResponse(buffer, {
+      status: 200,
+      headers: {
+        "Content-Type": contentType,
+        "Cache-Control": "public, max-age=60"
+      }
+    });
+  } catch (err: any) {
+    console.error(err);
+    return NextResponse.json({ error: err?.message ?? "Render failed" }, { status: 500 });
+  }
+}
 
-  return new Response(pngBuffer, {
-    headers: { "Content-Type": "image/png" },
+export async function GET() {
+  // 方便浏览器直接试
+  const sample = `# 快速示例
+
+- 支持 **GFM**
+- 表格
+- 代码高亮（Prism）
+
+\`\`\`ts
+export const add = (a: number, b: number) => a + b;
+\`\`\`
+`;
+  const { buffer, contentType } = await renderMarkdownToPNG({ markdown: sample });
+  return new NextResponse(buffer, {
+    status: 200,
+    headers: { "Content-Type": contentType }
   });
 }
