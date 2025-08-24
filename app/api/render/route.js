@@ -1,36 +1,71 @@
 import { NextResponse } from "next/server";
+import satori from "satori";
+import { Resvg } from "@resvg/resvg-js";
 import MarkdownIt from "markdown-it";
-import { createCanvas } from "@napi-rs/canvas"; // ✅ 替换 canvas
 
-export const runtime = "nodejs";
+// 初始化 markdown-it
+const md = new MarkdownIt();
 
 export async function POST(req) {
   try {
-    const { markdown, width = 600, height = 400, background = "#fff" } =
-      await req.json();
+    const { markdown, theme = "light", width = 600, height = 400, background = "#fff" } = await req.json();
 
-    const md = new MarkdownIt();
-    const plainText = markdown || "# Hello Markdown!";
+    // Markdown → HTML
+    const html = md.render(markdown || "# Hello World");
 
-    const canvas = createCanvas(width, height);
-    const ctx = canvas.getContext("2d");
+    // SVG（使用 satori 渲染）
+    const svg = await satori(
+      {
+        type: "div",
+        props: {
+          style: {
+            width: `${width}px`,
+            height: `${height}px`,
+            background,
+            color: theme === "dark" ? "#fff" : "#000",
+            fontSize: "20px",
+            padding: "20px",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            textAlign: "left",
+          },
+          dangerouslySetInnerHTML: { __html: html },
+        },
+      },
+      {
+        width,
+        height,
+        fonts: [
+          {
+            name: "Noto Sans",
+            data: await fetch(
+              "https://cdnjs.cloudflare.com/ajax/libs/noto-sans/21.0.0/NotoSans-Regular.ttf"
+            ).then((res) => res.arrayBuffer()),
+            weight: 400,
+            style: "normal",
+          },
+        ],
+      }
+    );
 
-    ctx.fillStyle = background;
-    ctx.fillRect(0, 0, width, height);
+    // SVG → PNG（使用 resvg 渲染）
+    const resvg = new Resvg(svg, {
+      background: "transparent",
+      fitTo: { mode: "width", value: width },
+    });
 
-    ctx.fillStyle = "#000";
-    ctx.font = "20px sans-serif";
-    ctx.fillText(plainText.replace(/\n/g, " "), 20, 50);
+    const pngData = resvg.render();
+    const pngBuffer = pngData.asPng();
 
-    const buffer = await canvas.encode("png"); // ✅ napi-rs 用 encode
-
-    return new NextResponse(buffer, {
-      status: 200,
+    return new NextResponse(pngBuffer, {
       headers: {
         "Content-Type": "image/png",
+        "Content-Disposition": "inline; filename=poster.png",
       },
     });
-  } catch (e) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+  } catch (err) {
+    console.error("Error rendering poster:", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
