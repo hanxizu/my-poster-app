@@ -1,25 +1,34 @@
 {
-  "name": "my-poster-app",
-  "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start"
+    "name": "my-poster-app",
+    "version": "1.0.0",
+    "private": true,
+    "scripts": {
+      "dev": "next dev",
+      "build": "next build",
+      "start": "next start"
+    },
+   "dependencies": {
+    "next": "13.4.19",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "satori": "^0.10.0",
+    "@resvg/resvg-js": "^2.6.0",
+    "markdown-it": "^13.0.0",
+    "html2canvas": "^1.4.1",
+    "jsdom": "^24.0.0",
+  
+    "react-markdown": "^9.0.1",
+    "remark-gfm": "^4.0.0",
+    "react-syntax-highlighter": "^15.5.0"
   },
- "dependencies": {
-  "next": "13.4.19",
-  "react": "18.2.0",
-  "react-dom": "18.2.0",
-  "satori": "^0.10.0",
-  "@resvg/resvg-js": "^2.6.0",
-  "markdown-it": "^13.0.0"
-},
-
-  "devDependencies": {
-  "typescript": "^5.2.2",
-  "@types/react": "^18.2.15",
-  "@types/node": "^18.17.0"
-}
-
-}
+  
+    "devDependencies": {
+    "typescript": "^5.2.2",
+    "@types/react": "^18.2.15",
+    "@types/node": "^18.17.0",
+    
+   
+    "canvas": "^2.11.2" 
+  }
+  
+  }
