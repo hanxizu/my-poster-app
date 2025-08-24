@@ -7,10 +7,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const { markdown = "Hello Poster!", width = 600, height = 400 } = req.body;
 
-    // React JSX 元素
-    const element = (
-      <div
-        style={{
+    // 用 React.createElement 替代 JSX
+    const element = React.createElement(
+      "div",
+      {
+        style: {
           display: "flex",
           width: Number(width),
           height: Number(height),
@@ -20,10 +21,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           fontSize: 32,
           fontWeight: "bold",
           color: "#333",
-        }}
-      >
-        {markdown}
-      </div>
+        },
+      },
+      markdown
     );
 
     // Satori -> SVG
