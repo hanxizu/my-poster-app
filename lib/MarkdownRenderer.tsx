@@ -3,20 +3,20 @@
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import {Prism as SyntaxHighlighter} from "react-syntax-highlighter";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/cjs/styles/prism";
 
 export interface RenderOptions {
   width?: number;
-  padding?: number;
   background?: string;
   textColor?: string;
+  fontSize?: number;
+  lineHeight?: number;
   fontFamily?: string;
-  fontSize?: number;    // px
-  lineHeight?: number;  // 例: 1.6
+  padding?: number;
 }
 
-export default function MarkdownRenderer({
+export default function MarkdownToSvg({
   markdown,
   opts = {}
 }: {
@@ -25,82 +25,75 @@ export default function MarkdownRenderer({
 }) {
   const {
     width = 800,
-    padding = 32,
     background = "#0b1020",
     textColor = "#e5e7eb",
-    fontFamily = "Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
+    fontFamily = "system-ui, sans-serif",
     fontSize = 16,
-    lineHeight = 1.8
+    lineHeight = 1.6,
+    padding = 32
   } = opts;
 
   return (
-    <div
-      id="capture-root"
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={width}
       style={{
-        width,
-        padding,
         background,
-        color: textColor,
         fontFamily,
         fontSize,
         lineHeight: String(lineHeight),
-        boxSizing: "border-box",
-        // 让 html2canvas 有确定尺寸
-        display: "block"
+        color: textColor
       }}
     >
-      <style>{`
-        h1{font-size:2.2em;margin:.6em 0 .4em;font-weight:700}
-        h2{font-size:1.8em;margin:.6em 0 .35em;font-weight:700}
-        h3{font-size:1.4em;margin:.6em 0 .3em;font-weight:700}
-        p{margin:.6em 0}
-        ul,ol{margin:.6em 0 .6em 1.2em}
-        blockquote{
-          margin:.8em 0;padding:.6em 1em;border-left:4px solid #3b82f6;
-          background:rgba(59,130,246,.08)
-        }
-        code{font-family: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
-        pre{overflow:auto;padding:1em;border-radius:12px}
-        table{border-collapse:collapse;width:100%}
-        th,td{border:1px solid rgba(255,255,255,.1);padding:.5em;text-align:left}
-        a{color:#60a5fa;text-decoration:none}
-      `}</style>
+      <foreignObject x={0} y={0} width="100%" height="100%">
+        <div
+          xmlns="http://www.w3.org/1999/xhtml"
+          style={{
+            display: "block",
+            padding: `${padding}px`,
+            color: textColor,
+            whiteSpace: "pre-wrap"
+          }}
+        >
+          <style>{`
+            h1{font-size:2em;margin:0.6em 0;}
+            h2{font-size:1.6em;margin:0.5em 0;}
+            p{margin:0.4em 0;}
+            code{background:rgba(255,255,255,0.1);padding:0.2em 0.4em;border-radius:4px;}
+            pre{margin:0.6em 0;padding:1em;border-radius:8px;overflow:auto;}
+            ul,ol{margin:0.5em 0 0.5em 1.2em;}
+            blockquote{border-left:4px solid #3b82f6;padding-left:1em;color:#9ca3af;}
+          `}</style>
 
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-          code({node, inline, className, children, ...props}) {
-            const match = /language-(\w+)/.exec(className || "");
-            if (!inline && match) {
-              return (
-                <SyntaxHighlighter
-                  language={match[1]}
-                  style={oneDark}
-                  PreTag="div"
-                  customStyle={{ margin: "0.6em 0", borderRadius: 12 }}
-                  {...props}
-                >
-                  {String(children).replace(/\n$/, "")}
-                </SyntaxHighlighter>
-              );
-            }
-            return (
-              <code
-                style={{
-                  background: "rgba(255,255,255,.08)",
-                  padding: ".2em .4em",
-                  borderRadius: "6px"
-                }}
-                {...props}
-              >
-                {children}
-              </code>
-            );
-          }
-        }}
-      >
-        {markdown}
-      </ReactMarkdown>
-    </div>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              code({ node, inline, className, children, ...props }) {
+                const match = /language-(\w+)/.exec(className || "");
+                if (!inline && match) {
+                  return (
+                    <SyntaxHighlighter
+                      language={match[1]}
+                      style={oneDark}
+                      PreTag="div"
+                      customStyle={{
+                        margin: "0.6em 0",
+                        borderRadius: "8px"
+                      }}
+                      {...props}
+                    >
+                      {String(children).replace(/\n$/, "")}
+                    </SyntaxHighlighter>
+                  );
+                }
+                return <code {...props}>{children}</code>;
+              }
+            }}
+          >
+            {markdown}
+          </ReactMarkdown>
+        </div>
+      </foreignObject>
+    </svg>
   );
 }
