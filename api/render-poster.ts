@@ -1,55 +1,40 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import React from "react";
+import { NextApiRequest, NextApiResponse } from "next";
 import satori from "satori";
-import { Resvg } from "@resvg/resvg-js";
+import React from "react";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { markdown = "Hello Poster!", width = 600, height = 400 } = req.body;
+    const { text = "Hello Poster!", width = 600, height = 400 } = req.query;
 
-    // 用 React.createElement 替代 JSX
+    // React 元素（Satori 渲染用）——不直接写 JSX
     const element = React.createElement(
       "div",
       {
         style: {
-          display: "flex",
           width: Number(width),
           height: Number(height),
+          display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "white",
-          fontSize: 32,
+          fontSize: "24px",
           fontWeight: "bold",
-          color: "#333",
+          color: "black",
+          background: "white",
         },
       },
-      markdown
+      text
     );
 
-    // Satori -> SVG
+    // 用 satori 渲染成 SVG
     const svg = await satori(element, {
       width: Number(width),
       height: Number(height),
-      fonts: [
-        {
-          name: "Noto Sans",
-          data: await fetch(
-            "https://fonts.gstatic.com/s/notosans/v27/o-0IIpQlx3QUlC5A4PNr5TRA.woff2"
-          ).then((res) => res.arrayBuffer()),
-          weight: 400,
-          style: "normal",
-        },
-      ],
+      fonts: [],
     });
 
-    // Resvg -> PNG
-    const resvg = new Resvg(svg);
-    const pngData = resvg.render().asPng();
-
-    res.setHeader("Content-Type", "image/png");
-    res.send(pngData);
-  } catch (err: any) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
+    res.setHeader("Content-Type", "image/svg+xml");
+    res.send(svg);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
   }
 }
